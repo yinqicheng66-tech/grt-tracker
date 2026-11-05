@@ -14,7 +14,7 @@ STATS_EVERY_S = 600
 def main() -> None:
     parser = argparse.ArgumentParser(description="Archive the GRT realtime feeds.")
     parser.add_argument("--out", default="data/raw", help="archive folder (default: data/raw)")
-    parser.add_argument("--no-static", action="store_true", help="skip the daily timetable download")
+    parser.add_argument("--no-static", action="store_true", help="skip the daily timetable downloads")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -22,7 +22,7 @@ def main() -> None:
 
     collector = Collector(out=Path(args.out))
     if args.no_static:
-        collector.static_url = None
+        collector.static_feeds = ()
 
     stopping = False
 

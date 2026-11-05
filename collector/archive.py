@@ -8,7 +8,10 @@ Layout of the archive (dates and times in UTC, so daylight saving never makes
 two files share a name):
 
     <out>/<feed>/<YYYY-MM-DD>/<HHMMSS>.pb.gz       realtime feeds
-    <out>/static/<YYYY-MM-DD>.zip                  the timetable, once a day
+    <out>/static/<system>/<YYYY-MM-DD>.zip         timetables, once a day
+
+GRT publishes the buses and the ION light rail as separate feeds:
+https://webapps.regionofwaterloo.ca/api/grt-routes/ lists them.
 """
 import gzip
 import hashlib
@@ -20,7 +23,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 log = logging.getLogger("collector")
 
@@ -34,12 +37,19 @@ class Feed:
     every_s: int  # how often to fetch it
 
 
-REALTIME_FEEDS = (
-    Feed("vehiclepositions", BASE + "/vehiclepositions", 30),
-    Feed("tripupdates", BASE + "/tripupdates", 30),
-    Feed("alerts", BASE + "/alerts", 300),
+# Feed number 1 is the buses, 2 is the ION light rail.
+SYSTEMS = (("bus", 1), ("lrt", 2))
+
+REALTIME_FEEDS = tuple(
+    Feed(f"{system}_{kind}", f"{BASE}/{kind}/{n}", 30)
+    for system, n in SYSTEMS
+    for kind in ("vehiclepositions", "tripupdates")
+) + (Feed("alerts", BASE + "/alerts", 300),)  # one alerts feed covers both
+
+# Timetables as GTFS zips, keyed by system.
+STATIC_FEEDS: Tuple[Tuple[str, str], ...] = tuple(
+    (system, f"{BASE}/staticfeeds/{n}") for system, n in SYSTEMS
 )
-STATIC_URL = "https://www.regionofwaterloo.ca/opendatadownloads/GRT_GTFS.zip"
 
 USER_AGENT = "grt-tracker (student project; https://github.com/yinqicheng66-tech/grt-tracker)"
 TIMEOUT_S = 20
@@ -88,7 +98,7 @@ class Collector:
     out: Path
     fetch: Fetcher = http_get
     feeds: Tuple[Feed, ...] = REALTIME_FEEDS
-    static_url: Optional[str] = STATIC_URL
+    static_feeds: Tuple[Tuple[str, str], ...] = STATIC_FEEDS
     clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
     monotonic: Callable[[], float] = time.monotonic
     state: Dict[str, FeedState] = field(default_factory=dict)
@@ -145,23 +155,26 @@ class Collector:
 
     # ----- static timetable -----
 
-    def save_static_if_missing(self) -> Optional[Path]:
-        """Download today's timetable unless it is already saved."""
-        if not self.static_url:
-            return None
+    def save_static_if_missing(self) -> List[Path]:
+        """Download today's timetables unless they are already saved."""
+        saved = []
         day = self.clock().astimezone(timezone.utc).strftime("%Y-%m-%d")
-        path = self.out / "static" / (day + ".zip")
-        if path.exists():
-            return None
-        try:
-            body = self.fetch(self.static_url)
-        except (urllib.error.URLError, OSError, ValueError) as exc:
-            log.warning("static timetable: fetch failed (%s); will retry", exc)
-            return None
-        write_atomic(path, body)
-        log.info("static timetable saved: %s (%d KB)", path, len(body) // 1024)
-        return path
-
+        for system, url in self.static_feeds:
+            path = self.out / "static" / system / (day + ".zip")
+            if path.exists():
+                continue
+            try:
+                body = self.fetch(url)
+            except (urllib.error.URLError, OSError, ValueError) as exc:
+                log.warning("%s timetable: fetch failed (%s); will retry", system, exc)
+                continue
+            if not body.startswith(b"PK"):
+                log.warning("%s timetable: response is not a zip file; will retry", system)
+                continue
+            write_atomic(path, body)
+            log.info("%s timetable saved: %s (%d KB)", system, path, len(body) // 1024)
+            saved.append(path)
+        return saved
 
 def backoff(every_s: int, failures: int) -> int:
     """Wait longer after each failure in a row, up to MAX_BACKOFF_S."""

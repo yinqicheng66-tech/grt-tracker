@@ -16,6 +16,7 @@ from collector.archive import (
 FAST = Feed("fast", "https://example.test/fast", 30)
 SLOW = Feed("slow", "https://example.test/slow", 300)
 STATIC = "https://example.test/static.zip"
+STATIC2 = "https://example.test/static2.zip"
 
 
 class FakeServer:
@@ -56,7 +57,7 @@ class CollectorTest(unittest.TestCase):
             out=self.out,
             fetch=self.server,
             feeds=(FAST, SLOW),
-            static_url=STATIC,
+            static_feeds=(("bus", STATIC),),
             clock=lambda: self.time.wall,
             monotonic=lambda: self.time.mono,
         )
@@ -127,24 +128,51 @@ class CollectorTest(unittest.TestCase):
 
     def test_static_saved_once_per_day(self):
         self.server.queue(STATIC, b"PK zip", b"PK zip 2")
-        path = self.collector.save_static_if_missing()
-        self.assertEqual(path, self.out / "static" / "2026-11-05.zip")
-        self.assertIsNone(self.collector.save_static_if_missing())
+        self.assertEqual(
+            self.collector.save_static_if_missing(), [self.out / "static" / "bus" / "2026-11-05.zip"]
+        )
+        self.assertEqual(self.collector.save_static_if_missing(), [])
         self.time.advance(24 * 3600)
         self.assertEqual(
-            self.collector.save_static_if_missing(), self.out / "static" / "2026-11-06.zip"
+            self.collector.save_static_if_missing(), [self.out / "static" / "bus" / "2026-11-06.zip"]
         )
         self.assertEqual(self.server.calls, [STATIC, STATIC])
 
     def test_static_failure_is_retried_later(self):
         self.server.queue(STATIC, OSError("reset"), b"PK")
-        self.assertIsNone(self.collector.save_static_if_missing())
-        self.assertIsNotNone(self.collector.save_static_if_missing())
+        self.assertEqual(self.collector.save_static_if_missing(), [])
+        self.assertEqual(len(self.collector.save_static_if_missing()), 1)
+
+    def test_static_rejects_non_zip(self):
+        # An error page served with status 200 must not be stored as a timetable.
+        self.server.queue(STATIC, b"<html>maintenance</html>")
+        self.assertEqual(self.collector.save_static_if_missing(), [])
+        self.assertEqual(list(self.out.rglob("*.zip")), [])
+
+    def test_one_failing_timetable_does_not_block_the_other(self):
+        self.collector.static_feeds = (("bus", STATIC), ("lrt", STATIC2))
+        self.server.queue(STATIC, OSError("down"))
+        self.server.queue(STATIC2, b"PK lrt")
+        self.assertEqual(
+            self.collector.save_static_if_missing(), [self.out / "static" / "lrt" / "2026-11-05.zip"]
+        )
 
     def test_no_temporary_files_left_behind(self):
         self.server.queue(FAST.url, b"x")
         self.collector.poll(FAST)
         self.assertEqual(list(self.out.rglob("*.tmp")), [])
+
+
+class FeedListTest(unittest.TestCase):
+    def test_bus_and_lrt_feeds(self):
+        from collector.archive import REALTIME_FEEDS, STATIC_FEEDS
+
+        urls = {f.name: f.url for f in REALTIME_FEEDS}
+        self.assertTrue(urls["bus_tripupdates"].endswith("/tripupdates/1"))
+        self.assertTrue(urls["lrt_vehiclepositions"].endswith("/vehiclepositions/2"))
+        self.assertTrue(urls["alerts"].endswith("/alerts"))
+        self.assertEqual(len(REALTIME_FEEDS), 5)
+        self.assertEqual([s for s, _ in STATIC_FEEDS], ["bus", "lrt"])
 
 
 class HelperTest(unittest.TestCase):

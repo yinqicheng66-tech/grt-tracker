@@ -11,7 +11,7 @@ around the clock and comparing actual arrivals with the timetable.
 
 ```
 GRT GTFS-rt feeds ──every 30 s──▶ collector ──▶ raw archive (gzipped protobuf)
-GRT timetable (GTFS zip) ──daily──▶ collector ──▶ static/<date>.zip
+GRT timetables (GTFS zip) ──daily──▶ collector ──▶ static/<bus|lrt>/<date>.zip
                                                      │
                                          (next) parser ──▶ PostgreSQL ──▶ API + dashboard
 ```
@@ -20,8 +20,9 @@ The collector stores every new snapshot exactly as received. Analysis runs
 on the archive later, so a bug in the analysis never loses data, and the
 whole history can be reprocessed after a fix.
 
-- Fetches vehicle positions and trip updates every 30 seconds and service
-  alerts every 5 minutes; the timetable once a day
+- Fetches vehicle positions and trip updates every 30 seconds, separately for
+  buses and the ION light rail, and service alerts every 5 minutes; both
+  timetables once a day
 - Skips snapshots identical to the previous one
 - Writes each file atomically, so a crash or power loss never leaves half a file
 - Backs off after failures (30 s, 60 s, 120 s, … up to 10 min) and recovers on its own
@@ -35,7 +36,9 @@ Requires Python 3.9 or newer.
 python3 -m collector --out data/raw
 ```
 
-Stop it with Control+C. Snapshots land in `data/raw/<feed>/<UTC date>/<UTC time>.pb.gz`.
+Stop it with Control+C. Snapshots land in `data/raw/<feed>/<UTC date>/<UTC time>.pb.gz`,
+where `<feed>` is `bus_tripupdates`, `bus_vehiclepositions`, `lrt_tripupdates`,
+`lrt_vehiclepositions` or `alerts`.
 
 ## Run tests
 
@@ -45,5 +48,5 @@ python3 -m unittest -v
 
 ## Data
 
-Feeds and timetable from the [Region of Waterloo open data portal](https://www.regionofwaterloo.ca/en/regional-government/open-data.aspx),
+Feeds and timetable from [GRT open data](https://www.grt.ca/about-grt/open-data/),
 used under the Region of Waterloo open data licence.
