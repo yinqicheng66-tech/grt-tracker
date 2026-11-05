@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Collected data (large; lives on the server, not in git)
+data/
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Logs
+*.log
