@@ -1,0 +1,12 @@
+# Install: sudo cp deploy/grt-ingest.* /etc/systemd/system/
+#          sudo systemctl enable --now grt-ingest.timer
+[Unit]
+Description=Run the GRT ingest every hour
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

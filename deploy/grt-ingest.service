@@ -1,0 +1,10 @@
+# Processes new snapshots into data/grt.db. Started hourly by grt-ingest.timer.
+[Unit]
+Description=GRT archive ingest
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/grt-tracker
+ExecStart=/usr/bin/python3 -m pipeline.ingest --raw data/raw --db data/grt.db
+Nice=10
