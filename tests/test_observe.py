@@ -2,7 +2,7 @@ import unittest
 
 from pipeline.db import connect
 from pipeline.gtfsrt import parse_feed
-from pipeline.observe import Pending, Tracker, departure_time
+from pipeline.observe import Pending, Tracker, departure_time, repair_day_offsets
 from pipeline.timetable import timetable_time
 from tests import pb
 
@@ -10,11 +10,11 @@ DATE = "20261105"
 T0 = timetable_time(DATE, "12:00:00")
 
 
-def snapshot(ts, trips):
+def snapshot(ts, trips, start_date=DATE):
     """trips: list of (trip_id, [(seq, stop_id, predicted)], tracked)."""
     updates = [
         pb.trip_update(
-            pb.trip(trip_id, start_date=DATE),
+            pb.trip(trip_id, start_date=start_date),
             [pb.stop_update(seq, stop, time=t) for seq, stop, t in stops],
             timestamp=ts if tracked else None,
         )
@@ -95,6 +95,26 @@ class TrackerTest(unittest.TestCase):
         later = Tracker(self.conn, "bus")
         later.process(snapshot(T0 + 410, [("A", [(3, "S3", T0 + 700)], True)]))
         self.assertEqual(self.departures(), [("S2", T0 + 400, 100)])
+
+    def test_after_midnight_trip_reported_on_the_next_day(self):
+        # Timetable: 24:30 on Nov 5. Feed: start date Nov 6. The bus left at 00:31 on Nov 6.
+        self.conn.execute("INSERT INTO scheduled_stops VALUES ('bus', 'N', 'S9', 1, '24:30:00', '91')")
+        left = timetable_time(DATE, "24:31:00")
+        self.tracker.process(snapshot(left - 20, [("N", [(1, "S9", left)], True)], start_date="20261106"))
+        self.tracker.process(snapshot(left + 10, [("N", [(2, "S3", left + 600)], True)], start_date="20261106"))
+        self.assertEqual(self.departures(), [("S9", left, 60)])
+
+    def test_repair_fixes_rows_stored_a_day_off(self):
+        self.conn.execute("INSERT INTO scheduled_stops VALUES ('bus', 'N', 'S9', 1, '24:30:00', '91')")
+        left = timetable_time(DATE, "24:31:00")
+        wrong = timetable_time("20261106", "24:30:00")  # what the old code computed
+        self.conn.execute(
+            "INSERT INTO departures VALUES ('bus', '20261106', 'N', 'S9', '91', 1, ?, ?, ?)",
+            (wrong, left, left - wrong),
+        )
+        self.assertEqual(repair_day_offsets(self.conn), 1)
+        self.assertEqual(self.departures(), [("S9", left, 60)])
+        self.assertEqual(repair_day_offsets(self.conn), 0)  # nothing left to fix
 
 
 if __name__ == "__main__":

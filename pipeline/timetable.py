@@ -3,7 +3,7 @@ import csv
 import io
 import sqlite3
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Iterator
 from zoneinfo import ZoneInfo
 
@@ -64,3 +64,19 @@ def timetable_time(service_date: str, hms: str) -> int:
     # Work in absolute seconds: Python's arithmetic on aware datetimes uses
     # wall-clock time, which would be an hour off on daylight-saving days.
     return int(noon.timestamp()) - 12 * 3600 + h * 3600 + m * 60 + s
+
+
+def nearest_timetable_time(service_date: str, hms: str, near: int) -> int:
+    """timetable_time on the service day, or the day before or after, whichever is closest to near.
+
+    Realtime feeds do not always agree with the timetable about which service
+    day an after-midnight trip belongs to. GRT's late-night routes, for
+    example, report a trip scheduled at "24:30:00" on Monday's timetable with
+    a start date of Tuesday. Taken literally that puts the scheduled time a
+    whole day after the bus actually ran.
+    """
+    day = datetime(int(service_date[:4]), int(service_date[4:6]), int(service_date[6:]), 12, tzinfo=TZ)
+    candidates = (
+        timetable_time((day + timedelta(days=offset)).strftime("%Y%m%d"), hms) for offset in (-1, 0, 1)
+    )
+    return min(candidates, key=lambda t: abs(t - near))

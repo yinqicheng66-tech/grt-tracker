@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from pipeline.db import connect
 from pipeline.gtfsrt import DecodeError, parse_feed
-from pipeline.observe import Tracker
+from pipeline.observe import Tracker, repair_day_offsets
 from pipeline.timetable import load_timetable
 
 log = logging.getLogger("ingest")
@@ -78,6 +78,9 @@ def main() -> None:
     raw = Path(args.raw)
     conn = connect(args.db)
     load_timetables(conn, raw)
+    repaired = repair_day_offsets(conn)
+    if repaired:
+        log.info("corrected %d departures recorded a service day off", repaired)
     for system in SYSTEMS:
         ingest_system(conn, raw, system)
     conn.close()

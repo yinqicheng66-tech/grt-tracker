@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
 from pipeline.gtfsrt import Feed
-from pipeline.timetable import timetable_time
+from pipeline.timetable import nearest_timetable_time
 
 GRACE_S = 120  # a final prediction this close to its snapshot is a departure
 MAX_AHEAD_S = 600  # trust a stop vanishing at most this long before its prediction
@@ -107,7 +107,7 @@ class Tracker:
             self.discarded += 1
             return
         service_date, trip_id, stop_id = key
-        scheduled = self._scheduled(service_date, trip_id, stop_id, p.stop_sequence)
+        scheduled = self._scheduled(service_date, trip_id, stop_id, p.stop_sequence, observed)
         self.conn.execute(
             "INSERT OR REPLACE INTO departures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
@@ -117,7 +117,9 @@ class Tracker:
         )
         self.recorded += 1
 
-    def _scheduled(self, service_date: str, trip_id: str, stop_id: str, seq: Optional[int]) -> Optional[int]:
+    def _scheduled(
+        self, service_date: str, trip_id: str, stop_id: str, seq: Optional[int], observed: int
+    ) -> Optional[int]:
         # Match on stop id, not stop sequence: the ION realtime feed numbers
         # stops from 1 while its timetable numbers them from 0. If a trip
         # visits the same stop twice, take the visit with the nearest number.
@@ -126,7 +128,7 @@ class Tracker:
             " ORDER BY ABS(stop_sequence - ?) LIMIT 1",
             (self.system, trip_id, stop_id, seq or 0),
         ).fetchone()
-        return timetable_time(service_date, row[0]) if row else None
+        return nearest_timetable_time(service_date, row[0], observed) if row else None
 
     def save(self) -> None:
         """Store unfinished predictions so the next run can continue them."""
@@ -138,3 +140,28 @@ class Tracker:
                 for key, p in self.pending.items()
             ),
         )
+
+
+def repair_day_offsets(conn: sqlite3.Connection) -> int:
+    """Fix departures stored a whole service day off, from before nearest_timetable_time.
+
+    Returns how many rows were corrected.
+    """
+    rows = conn.execute(
+        "SELECT system, service_date, trip_id, stop_id, stop_sequence, observed"
+        " FROM departures WHERE ABS(delay_s) > 43200"
+    ).fetchall()
+    for system, service_date, trip_id, stop_id, seq, observed in rows:
+        hms = conn.execute(
+            "SELECT departure FROM scheduled_stops WHERE system = ? AND trip_id = ? AND stop_id = ?"
+            " ORDER BY ABS(stop_sequence - ?) LIMIT 1",
+            (system, trip_id, stop_id, seq or 0),
+        ).fetchone()[0]
+        scheduled = nearest_timetable_time(service_date, hms, observed)
+        conn.execute(
+            "UPDATE departures SET scheduled = ?, delay_s = ?"
+            " WHERE system = ? AND service_date = ? AND trip_id = ? AND stop_id = ?",
+            (scheduled, observed - scheduled, system, service_date, trip_id, stop_id),
+        )
+    conn.commit()
+    return len(rows)
