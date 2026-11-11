@@ -1,10 +1,12 @@
-# Processes new snapshots into data/grt.db. Started hourly by grt-ingest.timer.
+# Processes new snapshots into data/grt.db, then publishes the dashboard.
+# Started hourly by grt-ingest.timer.
 [Unit]
-Description=GRT archive ingest
+Description=GRT archive ingest and dashboard publish
 
 [Service]
 Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/grt-tracker
 ExecStart=/usr/bin/python3 -m pipeline.ingest --raw data/raw --db data/grt.db
+ExecStartPost=/home/ubuntu/grt-tracker/deploy/publish.sh
 Nice=10

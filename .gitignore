@@ -12,3 +12,4 @@ data/
 
 # Logs
 *.log
+web/data.json

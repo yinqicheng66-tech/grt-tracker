@@ -6,8 +6,10 @@ Measures how punctual Grand River Transit buses and the ION light rail in
 Waterloo Region really are, by archiving the agency's live GTFS Realtime feeds
 around the clock and comparing actual departures with the timetable.
 
-> Work in progress. The archiver has run on a cloud server since 5 Nov 2026,
-> and the pipeline turns its snapshots into per-stop delays. A dashboard comes next.
+**Dashboard: https://yinqicheng66-tech.github.io/grt-tracker/** (updated hourly)
+
+> The archiver has run on a cloud server since 5 Nov 2026; numbers below are
+> from the first day and will be updated as data accumulates.
 
 ## First results
 
@@ -27,7 +29,7 @@ On time means leaving between 1 minute early and 5 minutes late.
 GRT GTFS-rt feeds ──every 30 s──▶ collector ──▶ raw archive (gzipped protobuf)
 GRT timetables (GTFS zip) ─daily─▶ collector ──▶ static/<bus|lrt>/<date>.zip
                                                      │
-                                      hourly ingest ─┴─▶ SQLite ──▶ report (dashboard next)
+                                      hourly ingest ─┴─▶ SQLite ──▶ data.json ──▶ dashboard (GitHub Pages)
 ```
 
 ### 1. Collector
@@ -73,7 +75,15 @@ Things that came up in the real data and how they are handled
 As a cross-check, departures timed from vehicle positions (when a bus's
 current stop changes) agree to within a few seconds for buses (median 79 s against 81 s).
 
-### 3. Standard library only
+### 3. Dashboard
+
+`pipeline/export.py` turns the database into one small JSON file, and `web/` is
+a static page (plain JavaScript and SVG charts, Leaflet for the map) that reads
+it. After each hourly ingest, `deploy/publish.sh` pushes the page and the
+fresh data to the `gh-pages` branch, which GitHub Pages serves. The branch
+keeps a single commit, so the repository does not grow every hour.
+
+### 4. Standard library only
 
 The protobuf decoder (`pipeline/gtfsrt.py`), the timetable loader and the
 database (SQLite) use only Python's standard library, so the whole project runs
@@ -94,7 +104,21 @@ incremental: it remembers the last snapshot it processed and carries unfinished
 trips over to the next run.
 
 On the server, `deploy/` holds the systemd units: the collector runs
-continuously and `grt-ingest.timer` processes new data every hour.
+continuously and `grt-ingest.timer` processes new data and republishes the
+dashboard every hour.
+
+Publishing needs a deploy key once: generate one on the server
+(`ssh-keygen -t ed25519 -f ~/.ssh/grt-deploy -N ""`), add the public key under the
+repository's Settings → Deploy keys with write access, point `github.com` at it
+in `~/.ssh/config`, run `deploy/publish.sh` once, and set Settings → Pages to
+deploy from the `gh-pages` branch.
+
+To preview the page locally:
+
+```bash
+python3 -m pipeline.export --db data/grt.db --out web/data.json
+cd web && python3 -m http.server 8000   # then open http://localhost:8000
+```
 
 ## Run tests
 

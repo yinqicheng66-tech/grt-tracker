@@ -33,7 +33,8 @@ WHERE fs.trip_id IS NULL AND d.delay_s IS NOT NULL AND d.observed >= ?
 
 
 def percentile(sorted_values: Sequence[int], p: float) -> int:
-    return sorted_values[round(p * (len(sorted_values) - 1))]
+    """Nearest-rank percentile, rounding half up (Python's round() goes to even)."""
+    return sorted_values[int(p * (len(sorted_values) - 1) + 0.5)]
 
 
 def summarize(delays: List[int]) -> Dict[str, float]:
