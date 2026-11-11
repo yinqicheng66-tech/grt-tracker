@@ -8,20 +8,26 @@ around the clock and comparing actual departures with the timetable.
 
 **Dashboard: https://yinqicheng66-tech.github.io/grt-tracker/** (updated hourly)
 
-> The archiver has run on a cloud server since 5 Nov 2026; numbers below are
-> from the first day and will be updated as data accumulates.
+## Results
 
-## First results
+From the first week of data, 5–11 Nov 2026 (about 633,000 bus and 16,000 ION
+departures). The dashboard keeps updating as data accumulates.
 
-From 1.5 hours of data on the afternoon of 5 Nov 2026 (7,117 bus and 207 ION
-departures; a first look, not yet a representative sample):
-
-| | On time | Median delay | Worst routes |
+| | On time | Median delay | 90 % of departures are no later than |
 | --- | --- | --- | --- |
-| Buses | 90.5 % | 83 s late | 4 Glasgow-Margaret and 3 Ottawa South, about 34 % on time |
-| ION light rail | 100 % | 18 s late | |
+| Buses | 89.7 % | 79 s late | 5 min 4 s late |
+| ION light rail | 98.6 % | 8 s late | 68 s late |
 
 On time means leaving between 1 minute early and 5 minutes late.
+
+- **The afternoon rush is the problem.** Buses leave on time 98 % of the time
+  at 7 a.m. but only 80 % between 4 and 7 p.m., when the median delay grows to
+  about 2 minutes.
+- **Day to day,** on-time rates ranged from 85 % (5 Nov, which only covers
+  the afternoon and evening) to 93 % (Sun 8 Nov and Mon 9 Nov).
+- **Least punctual routes:** 3 Ottawa South (72 %), 20 Victoria-Frederick
+  (74 %), 7 King (76 %) and 4 Glasgow-Margaret (76 %).
+- **Buses almost never leave early** (0.04 % of departures).
 
 ## How it works
 
@@ -69,11 +75,17 @@ Things that came up in the real data and how they are handled
   is counted.
 - **Terminals.** A bus waiting at its first stop can drop off the feed before
   leaving, so first stops are left out of the statistics.
+- **Trips after midnight.** The timetable lists a 12:30 a.m. trip as
+  "24:30" on the previous day, but the realtime feed reports it under the next
+  date, which first put the late-night route a whole day early. Each departure
+  is now matched to whichever service day puts its schedule closest to when it
+  actually ran.
 - **Daylight saving.** Timetable times are counted from "noon minus 12 hours",
   as the GTFS spec defines, so schedules stay correct on the days clocks change.
 
-As a cross-check, departures timed from vehicle positions (when a bus's
-current stop changes) agree to within a few seconds for buses (median 79 s against 81 s).
+As a cross-check on the first day of data, departures timed from vehicle
+positions (when a bus's current stop changes) agreed to within a few seconds
+for buses (median 79 s against 81 s).
 
 ### 3. Dashboard
 
