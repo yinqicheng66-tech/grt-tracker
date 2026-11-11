@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How punctual is GRT? Waterloo Region transit on-time tracker</title>
+<meta name="description" content="On-time performance of Grand River Transit buses and the ION light rail, measured from live GTFS Realtime feeds every 30 seconds.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="viz-root">
+  <header class="intro">
+    <h1>How punctual is GRT?</h1>
+    <p class="lede">
+      On-time performance of Grand River Transit buses and the ION light rail in Waterloo Region,
+      measured from GRT's live data feeds every 30 seconds.
+    </p>
+    <p class="meta" id="meta">Loading data…</p>
+  </header>
+
+  <section class="tiles" id="tiles" aria-label="Summary"></section>
+
+  <section class="card">
+    <h2>Bus on-time rate by hour of day</h2>
+    <p class="sub" id="hourly-sub">Share of departures between 1 minute early and 5 minutes late, by scheduled hour.</p>
+    <div class="chart" id="hourly"></div>
+  </section>
+
+  <section class="card" id="daily-card" hidden>
+    <h2>On-time rate by day</h2>
+    <div class="legend" id="daily-legend"></div>
+    <div class="chart" id="daily"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Routes ranked by on-time rate</h2>
+        <p class="sub">Worst first. Hover a bar for the median and 90th-percentile delay.</p>
+      </div>
+      <div class="segmented" role="group" aria-label="System">
+        <button type="button" data-system="bus" aria-pressed="true">Bus</button>
+        <button type="button" data-system="all" aria-pressed="false">All</button>
+      </div>
+    </div>
+    <div class="chart" id="routes"></div>
+    <details class="table-view">
+      <summary>Show as table</summary>
+      <div class="table-wrap"><table id="routes-table"></table></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Stops with the longest delays</h2>
+    <p class="sub">Median delay at each stop with enough departures. Larger, darker circles mean longer delays.</p>
+    <div class="scale" id="map-scale"></div>
+    <div id="map" role="img" aria-label="Map of stops coloured by median delay"></div>
+  </section>
+
+  <section class="card method">
+    <h2>How this is measured</h2>
+    <p>
+      A collector on a cloud server archives GRT's GTFS Realtime feeds every 30 seconds.
+      Each trip update lists a predicted departure time for every stop a vehicle has not reached yet,
+      and a stop drops off the list once the vehicle leaves it, so the last prediction before a stop
+      disappears is taken as the actual departure and compared with the timetable.
+    </p>
+    <p>
+      A departure counts as on time between 1 minute early and 5 minutes late. First stops of each
+      trip are left out, since a bus waiting at its terminal can drop off the feed before it leaves.
+      Trips with no vehicle tracking and gaps in the archive are excluded rather than guessed.
+    </p>
+    <p>
+      Source code and full method:
+      <a href="https://github.com/yinqicheng66-tech/grt-tracker">github.com/yinqicheng66-tech/grt-tracker</a>.
+      Data from <a href="https://www.grt.ca/about-grt/open-data/">GRT open data</a>.
+      Built by Qicheng Yin.
+    </p>
+  </section>
+  <div class="tooltip" id="tooltip" role="status" hidden></div>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="app.js"></script>
+</body>
+</html>
