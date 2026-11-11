@@ -1,0 +1,148 @@
+.viz-root {
+  color-scheme: light;
+  --page: #f4f3ef;
+  --surface-1: #fcfcfb;
+  --border: #e3e2dc;
+  --grid: #e8e7e2;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #77766f;
+  --series-1: #2a78d6; /* bus */
+  --series-2: #eb6834; /* ION */
+  --accent-wash: rgba(42, 120, 214, 0.1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    color-scheme: dark;
+    --page: #111110;
+    --surface-1: #1a1a19;
+    --border: #2e2e2c;
+    --grid: #2a2a28;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #94938a;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --accent-wash: rgba(57, 135, 229, 0.14);
+  }
+}
+
+* { box-sizing: border-box; }
+html { background: #f4f3ef; }
+@media (prefers-color-scheme: dark) { html { background: #111110; } }
+body { margin: 0; }
+
+.viz-root {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 20px 64px;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+h1 { font-size: 32px; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.01em; }
+h2 { font-size: 17px; margin: 0; }
+.lede { font-size: 17px; color: var(--text-secondary); margin: 0 0 6px; max-width: 640px; }
+.meta { font-size: 13px; color: var(--text-muted); margin: 0; }
+.sub { font-size: 13px; color: var(--text-secondary); margin: 2px 0 12px; }
+a { color: inherit; }
+
+.intro { margin-bottom: 24px; }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, calc(50% - 6px)), 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.tile .label { font-size: 13px; color: var(--text-secondary); }
+.tile .value { font-size: 30px; font-weight: 600; line-height: 1.2; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tile .note { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.tile .key { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px 20px;
+  margin-bottom: 16px;
+}
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart .label-primary { fill: var(--text-primary); }
+.chart .label-secondary { fill: var(--text-secondary); }
+.chart .grid { stroke: var(--grid); stroke-width: 1; shape-rendering: crispEdges; }
+.chart .baseline { stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .hit { fill: transparent; cursor: default; }
+.chart .crosshair { stroke: var(--text-muted); stroke-width: 1; shape-rendering: crispEdges; pointer-events: none; }
+.chart .dot { stroke: var(--surface-1); stroke-width: 2; }
+.chart .bar-row:hover .bar, .chart .bar-row:focus .bar { opacity: 0.8; }
+.chart .bar-row:focus { outline: none; }
+.chart .bar-row:focus-visible .row-bg { stroke: var(--text-secondary); stroke-width: 1; }
+
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-secondary); margin: 4px 0 10px; }
+.legend .key { display: inline-block; width: 14px; height: 2px; margin-right: 6px; vertical-align: 4px; border-radius: 1px; }
+
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.segmented button {
+  font: inherit; font-size: 13px; padding: 4px 12px; border: 0; background: transparent;
+  color: var(--text-secondary); cursor: pointer;
+}
+.segmented button[aria-pressed="true"] { background: var(--accent-wash); color: var(--text-primary); font-weight: 600; }
+
+.table-view { margin-top: 12px; font-size: 13px; }
+.table-view summary { cursor: pointer; color: var(--text-secondary); }
+.table-wrap { overflow-x: auto; margin-top: 8px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:nth-child(-n+2), td:nth-child(-n+2) { text-align: left; }
+th { color: var(--text-secondary); font-weight: 600; }
+
+#map { height: 460px; border-radius: 8px; border: 1px solid var(--border); background: var(--grid); }
+.scale { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.scale .ramp { display: flex; gap: 2px; }
+.scale .ramp span { width: 28px; height: 10px; border-radius: 2px; }
+.leaflet-container { font: inherit; }
+
+.method p { color: var(--text-secondary); margin: 8px 0 0; max-width: 720px; }
+
+.tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--surface-1, #fcfcfb);
+  color: var(--text-primary, #0b0b0b);
+  border: 1px solid var(--border, #e3e2dc);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 8px 10px;
+  font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  max-width: 260px;
+}
+.tooltip strong { display: block; margin-bottom: 2px; }
+.tooltip .row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-secondary, #52514e); }
+.tooltip .row b { color: var(--text-primary, #0b0b0b); font-weight: 600; }
+
+@media (max-width: 560px) {
+  h1 { font-size: 26px; }
+  .viz-root { padding: 24px 14px 48px; }
+  .tile .value { font-size: 26px; }
+  #map { height: 360px; }
+}
+
+.leaflet-tooltip.map-tip { font-size: 13px; line-height: 1.45; padding: 8px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+.map-tip strong { display: block; margin-bottom: 2px; }
+.map-tip .row { display: flex; justify-content: space-between; gap: 16px; color: #52514e; }
+.map-tip .row b { color: #0b0b0b; font-weight: 600; }
